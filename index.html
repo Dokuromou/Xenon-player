@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="toxic">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#107C10">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="XENON">
+<title>XENON — Dashboard Player</title>
+<meta name="description" content="XENON — retro Xbox 360 style local music player. Play your MP3s with EQ, lyrics, playlists, radio, themes Toxic / Neon / Danger / Void.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+</head>
+<body>
+
+<!-- BOOT / INTRO OVERLAY -->
+<div id="bootOverlay" class="boot-overlay">
+  <!-- INTRO STAGE -->
+  <div id="introStage" class="intro-stage">
+    <div class="intro-logo">
+      <svg viewBox="0 0 200 200" class="intro-svg" aria-hidden="true">
+        <circle cx="100" cy="100" r="92" fill="none" stroke="var(--accent)" stroke-width="3" class="intro-ring"/>
+        <circle cx="100" cy="100" r="72" fill="url(#xg)" stroke="rgba(255,255,255,.35)" stroke-width="1.5"/>
+        <defs><radialGradient id="xg" cx="38%" cy="30%" r="80%">
+          <stop offset="0%" stop-color="#96e66e"/><stop offset="55%" stop-color="#2fae2f"/><stop offset="100%" stop-color="#0a5c0a"/>
+        </radialGradient></defs>
+        <path d="M62 62 L138 138 M138 62 L62 138" stroke="#fff" stroke-width="17" stroke-linecap="square"/>
+        <circle cx="100" cy="100" r="8" fill="#0a5c0a" stroke="#fff" stroke-width="3"/>
+        <circle cx="172" cy="52" r="7" fill="#c8ffb0" class="intro-dot"/>
+      </svg>
+    </div>
+    <h1 class="intro-title" aria-label="XENON"><span>X</span><span>E</span><span>N</span><span>O</span><span>N</span></h1>
+    <p class="intro-sub">MUSIC DASHBOARD</p>
+    <div class="intro-bar"><span id="introFill"></span></div>
+    <p class="intro-status" id="introStatus">Powering up…</p>
+    <p class="skip-hint">Tap anywhere to skip</p>
+  </div>
+
+  <!-- PERMISSION CARD -->
+  <div class="boot-card pre" id="bootCard">
+    <div class="xbox-orb"><span>X</span></div>
+    <h1>XEN<em>ON</em></h1>
+    <p class="boot-sub">Your personal dashboard player • v3.0</p>
+    <div class="boot-perm">
+      <div class="perm-icon">🎵</div>
+      <h3>Allow access to your music?</h3>
+      <p>To play your MP3s, the browser needs your permission to read your files. Nothing is uploaded — everything stays on your phone / PC.</p>
+      <ol>
+        <li>Tap <b>Load My Music</b> below</li>
+        <li>On your phone, pick your <b>Music / Downloads</b> folder or select MP3 files</li>
+        <li>Tap <b>Allow / Select</b> — done! 🎧</li>
+      </ol>
+      <p class="perm-note">💡 On Android Chrome: choose a folder to load hundreds of songs at once. On iPhone Safari: select multiple files. You can also drag &amp; drop files anytime. <b>Tip:</b> on Chrome you can grant folder access once and the app will auto-scan it on every open.</p>
+    </div>
+    <div class="boot-actions">
+      <button id="btnLoadFiles" class="btn btn-primary btn-lg">📂 Load My Music Files</button>
+      <button id="btnDemo" class="btn btn-ghost btn-lg">▶ Try Demo Library</button>
+    </div>
+    <div class="boot-themes">
+      <span>THEMES:</span>
+      <button class="theme-dot toxic active" data-set-theme="toxic" title="Toxic — Original Xbox Green">● Toxic</button>
+      <button class="theme-dot neon" data-set-theme="neon" title="Neon — Blue">● Neon</button>
+      <button class="theme-dot danger" data-set-theme="danger" title="Danger — Red">● Danger</button>
+      <button class="theme-dot void" data-set-theme="void" title="Void — Deep Purple">● Void</button>
+    </div>
+    <p class="boot-foot">Works offline after load • Files never leave your device • Made for GitHub Pages</p>
+  </div>
+  <input type="file" id="fileInput" accept="audio/*,.mp3,.m4a,.ogg,.wav,.flac" multiple hidden>
+  <input type="file" id="folderInput" webkitdirectory hidden>
+</div>
+
+<!-- SCANNING OVERLAY -->
+<div id="scanOverlay" class="scan-overlay hidden">
+  <div class="scan-card">
+    <div class="scan-orb">🎵</div>
+    <h3>Scanning your music…</h3>
+    <div class="scan-bar"><span id="scanFill"></span></div>
+    <p id="scanText">Reading tags &amp; cover art</p>
+    <button id="btnCancelScan" class="btn btn-small">Cancel</button>
+  </div>
+</div>
+
+<!-- APP SHELL -->
+<div id="app" class="app hidden">
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="top-left">
+      <button id="guideBtn" class="guide-btn" title="Guide Menu"><span>X</span></button>
+      <div class="brand">
+        <div class="brand-title">XEN<span>ON</span> <small class="ver">v3.0</small></div>
+        <div class="brand-sub" id="libraryCount">0 tracks • Dashboard</div>
+      </div>
+    </div>
+    <div class="top-center">
+      <div class="search-box">
+        <span>🔍</span>
+        <input id="searchInput" type="search" placeholder="Search songs, artists, albums, radio...">
+        <button id="clearSearch" class="icon-btn hidden">✕</button>
+      </div>
+    </div>
+    <div class="top-right">
+      <div class="clock" id="clock" title="Dashboard clock">--:--</div>
+      <button id="btnInstall" class="btn btn-small hidden">⬇ Install App</button>
+      <button id="btnAddFiles" class="btn btn-small">＋ Add Music</button>
+      <button id="btnHelp" class="icon-btn" title="Help & shortcuts">?</button>
+      <button id="btnSound" class="icon-btn" title="UI Sounds on/off">🔊</button>
+      <div class="theme-switcher" id="themeSwitcher">
+        <button data-set-theme="toxic" class="active">Toxic</button>
+        <button data-set-theme="neon">Neon</button>
+        <button data-set-theme="danger">Danger</button>
+        <button data-set-theme="void">Void</button>
+      </div>
+      <div class="avatar">🎮</div>
+    </div>
+  </header>
+
+  <!-- BLADES NAV -->
+  <nav class="blades" id="blades">
+    <button class="blade active" data-view="home"><span class="blade-icon">🏠</span> Home</button>
+    <button class="blade" data-view="albums"><span class="blade-icon">🎮</span> Albums</button>
+    <button class="blade" data-view="artists"><span class="blade-icon">🎤</span> Artists</button>
+    <button class="blade" data-view="songs"><span class="blade-icon">🎵</span> All Songs</button>
+    <button class="blade" data-view="playlists"><span class="blade-icon">📋</span> Playlists</button>
+    <button class="blade" data-view="favorites"><span class="blade-icon">❤️</span> Favorites</button>
+    <button class="blade" data-view="radio"><span class="blade-icon">📻</span> Radio</button>
+    <button class="blade" data-view="settings"><span class="blade-icon">⚙️</span> Settings</button>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main" id="mainScroll">
+    <!-- HOME VIEW -->
+    <section id="view-home" class="view active">
+      <div class="section-head">
+        <div>
+          <h2>🎮 Game Selection <span class="pill">Albums</span></h2>
+          <p>Scroll sideways like the Xbox 360 dashboard — pick an album to play</p>
+        </div>
+        <div class="head-actions">
+          <button id="scrollLeft" class="icon-btn">‹</button>
+          <button id="scrollRight" class="icon-btn">›</button>
+          <select id="sortSelect" class="select">
+            <option value="recent">Sort: Recently Added</option>
+            <option value="title">Title A–Z</option>
+            <option value="artist">Artist A–Z</option>
+            <option value="album">Album A–Z</option>
+            <option value="duration">Duration</option>
+            <option value="plays">Most Played</option>
+          </select>
+        </div>
+      </div>
+      <div id="albumCarousel" class="album-carousel"></div>
+      <div id="albumDots" class="album-dots"></div>
+
+      <div id="recentSection" class="hidden">
+        <div class="section-head mt"><div><h2>🕐 Recently Played</h2><p>Your latest spins</p></div></div>
+        <div id="recentList" class="track-list"></div>
+      </div>
+      <div id="topSection" class="hidden">
+        <div class="section-head mt"><div><h2>🔥 Most Played</h2><p>Your all-time favorites by plays</p></div></div>
+        <div id="topList" class="track-list"></div>
+      </div>
+
+      <div class="section-head mt">
+        <div>
+          <h2>▶ Up Next <span class="pill" id="upNextCount">0</span></h2>
+          <p>Your queue — tap any track to play</p>
+        </div>
+        <div class="head-actions">
+          <button id="btnSurprise" class="btn btn-small">🎲 Surprise Me</button>
+          <button id="btnShuffleAll" class="btn btn-small">🔀 Shuffle All</button>
+        </div>
+      </div>
+      <div id="trackList" class="track-list"></div>
+      <div id="emptyState" class="empty-state hidden">
+        <div class="empty-icon">🎵</div>
+        <h3>No music yet</h3>
+        <p>Load your MP3s or try the demo library to get started.</p>
+        <button class="btn btn-primary" onclick="document.getElementById('btnAddFiles').click()">📂 Load Music Files</button>
+      </div>
+    </section>
+
+    <!-- ALBUMS VIEW -->
+    <section id="view-albums" class="view">
+      <div class="section-head"><div><h2>🎮 All Albums</h2><p>Every album as a game case — tap for details</p></div></div>
+      <div id="albumGrid" class="album-grid"></div>
+    </section>
+
+    <!-- ARTISTS VIEW -->
+    <section id="view-artists" class="view">
+      <div class="section-head"><div><h2>🎤 Artists</h2><p>Browse by artist — tap to play their music</p></div></div>
+      <div id="artistGrid" class="album-grid"></div>
+    </section>
+
+    <!-- SONGS VIEW -->
+    <section id="view-songs" class="view">
+      <div class="section-head"><div><h2>🎵 All Songs</h2><p id="songsCount">0 tracks</p></div>
+      <div class="head-actions"><button id="btnPlayAll" class="btn btn-primary btn-small">▶ Play All</button><button id="btnShuffleAll2" class="btn btn-small">🔀 Shuffle</button></div></div>
+      <div id="allSongsList" class="track-list"></div>
+    </section>
+
+    <!-- PLAYLISTS VIEW -->
+    <section id="view-playlists" class="view">
+      <div class="section-head"><div><h2>📋 Playlists</h2><p>Create &amp; manage your mixes</p></div>
+      <div class="head-actions">
+        <button id="btnImportM3U" class="btn btn-small">⬆ Import .M3U</button>
+        <button id="btnNewPlaylist" class="btn btn-primary btn-small">＋ New Playlist</button>
+      </div></div>
+      <div id="playlistGrid" class="playlist-grid"></div>
+      <div id="playlistDetail" class="hidden">
+        <div class="section-head mt"><div><h2 id="plDetailTitle">Playlist</h2><p id="plDetailCount"></p></div>
+        <div class="head-actions"><button id="btnPlayPlaylist" class="btn btn-primary btn-small">▶ Play</button><button id="btnShufflePlaylist" class="btn btn-small">🔀 Shuffle</button><button id="btnRenamePlaylist" class="btn btn-small">✏️ Rename</button><button id="btnDeletePlaylist" class="btn btn-danger btn-small">🗑 Delete</button><button id="btnBackPlaylists" class="btn btn-small">← Back</button></div></div>
+        <div id="playlistTracks" class="track-list"></div>
+      </div>
+    </section>
+
+    <!-- FAVORITES VIEW -->
+    <section id="view-favorites" class="view">
+      <div class="section-head"><div><h2>❤️ Favorites</h2><p>Tap the heart on any song to save it here</p></div>
+      <button id="btnPlayFavs" class="btn btn-primary btn-small">▶ Play Favorites</button></div>
+      <div id="favList" class="track-list"></div>
+    </section>
+
+    <!-- RADIO VIEW -->
+    <section id="view-radio" class="view">
+      <div class="section-head"><div><h2>📻 Radio</h2><p>Live streams — plays alongside your library</p></div></div>
+      <div class="card" style="margin-bottom:16px">
+        <h3>➕ Add a stream URL</h3>
+        <p>Paste any direct MP3/AAC stream link (e.g. from your favorite station's website)</p>
+        <div class="radio-add">
+          <input id="radioUrl" type="url" placeholder="https://…/stream.mp3">
+          <input id="radioName" type="text" placeholder="Station name (optional)">
+          <button id="btnAddRadio" class="btn btn-primary btn-small">Add &amp; Play</button>
+        </div>
+      </div>
+      <div id="radioGrid" class="playlist-grid"></div>
+      <p class="hint" style="margin-top:14px">ℹ️ Radio plays through a separate output — the equalizer &amp; visualizer apply to your files. Some stations block embedding; if one won't play, try another.</p>
+    </section>
+
+    <!-- SETTINGS VIEW -->
+    <section id="view-settings" class="view">
+      <div class="section-head"><div><h2>⚙️ Settings</h2><p>Dashboard preferences</p></div></div>
+      <div class="settings-grid">
+        <div class="card">
+          <h3>🎨 Theme</h3>
+          <p>Pick your dashboard color</p>
+          <div class="theme-cards">
+            <button class="theme-card toxic" data-set-theme="toxic"><span class="tc-orb">X</span><b>Toxic</b><small>Original Xbox green</small></button>
+            <button class="theme-card neon" data-set-theme="neon"><span class="tc-orb">X</span><b>Neon</b><small>Electric blue</small></button>
+            <button class="theme-card danger" data-set-theme="danger"><span class="tc-orb">X</span><b>Danger</b><small>Hot red</small></button>
+            <button class="theme-card void" data-set-theme="void"><span class="tc-orb">X</span><b>Void</b><small>Deep purple</small></button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>🔊 Sounds &amp; Feel</h3>
+          <p>Retro dashboard beeps &amp; phone feedback</p>
+          <label class="switch-row"><span>Sound effects</span><span class="switch"><input type="checkbox" id="toggleSounds" checked><span class="slider"></span></span></label>
+          <label class="switch-row"><span>Auto-play next track</span><span class="switch"><input type="checkbox" id="toggleAutoplay" checked><span class="slider"></span></span></label>
+          <label class="switch-row"><span>Show visualizer</span><span class="switch"><input type="checkbox" id="toggleVisualizer" checked><span class="slider"></span></span></label>
+          <label class="switch-row"><span>Fade in / out</span><span class="switch"><input type="checkbox" id="toggleFade" checked><span class="slider"></span></span></label>
+          <label class="switch-row"><span>Haptic feedback (phone)</span><span class="switch"><input type="checkbox" id="toggleHaptics" checked><span class="slider"></span></span></label>
+        </div>
+        <div class="card">
+          <h3>▶️ Playback</h3>
+          <p>Speed &amp; visualizer style</p>
+          <label class="switch-row"><span>Speed</span>
+            <select id="speedSelect" class="select">
+              <option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1× Normal</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option>
+            </select>
+          </label>
+          <label class="switch-row"><span>Visualizer</span>
+            <select id="vizModeSelect" class="select">
+              <option value="round" selected>⭕ Round</option><option value="bars">📊 Bars</option><option value="wave">〰 Wave</option>
+            </select>
+          </label>
+          <div class="btn-row" style="margin-top:10px">
+            <button id="btnRescan" class="btn btn-small">🔄 Rescan Music Folder</button>
+            <button id="btnReplayIntro" class="btn btn-small">▶ Replay Intro</button>
+          </div>
+          <p id="folderStatus" class="hint" style="margin-top:8px">Folder auto-scan: not set up</p>
+        </div>
+        <div class="card">
+          <h3>⏱ Sleep Timer</h3>
+          <p>Stop playback automatically (fades out in the last 10s)</p>
+          <div class="timer-btns">
+            <button data-sleep="5">5 min</button><button data-sleep="10">10</button><button data-sleep="15">15</button><button data-sleep="30">30</button><button data-sleep="45">45</button><button data-sleep="60">60</button><button data-sleep="0" class="off">Off</button>
+          </div>
+          <p id="sleepStatus" class="sleep-status">Timer off</p>
+        </div>
+        <div class="card">
+          <h3>📊 Library Stats</h3>
+          <div id="statsBox" class="stats-box">Load music to see stats.</div>
+        </div>
+        <div class="card">
+          <h3>💾 Data &amp; Backup</h3>
+          <p>Your favorites, playlists &amp; edits live in this browser</p>
+          <div class="btn-row">
+            <button id="btnExport" class="btn btn-small">⬇ Export Library JSON</button>
+            <button id="btnImport" class="btn btn-small">⬆ Import Library JSON</button>
+            <button id="btnClearData" class="btn btn-danger btn-small">🗑 Clear Saved Data</button>
+          </div>
+          <p class="hint">Tip: On GitHub Pages, data is per-browser. Export to back up.</p>
+        </div>
+        <div class="card wide">
+          <h3>📱 How to load music on your phone</h3>
+          <ol class="howto">
+            <li><b>Android (Chrome):</b> Tap <i>Add Music → Choose Folder</i> and pick <code>Music</code> or <code>Download</code>. Allow access. Grant once → auto-scan on every open.</li>
+            <li><b>iPhone (Safari):</b> Tap <i>Add Music → Choose Files</i>, go to <i>Files → On My iPhone / iCloud</i> and select MP3s. iOS limits folder picking — select files in batches.</li>
+            <li><b>PC:</b> Drag &amp; drop MP3s anywhere, or use the file picker. Folder mode loads whole libraries.</li>
+            <li>Cover art &amp; tags are read automatically from ID3. Use <i>Edit Tags</i> on any song to fix # / artist / album / cover.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- BOTTOM PLAYER -->
+  <footer class="player" id="playerBar">
+    <div class="player-left">
+      <div class="player-cover" id="playerCover"><span>🎵</span></div>
+      <div class="player-meta">
+        <div class="player-title" id="playerTitle">No track selected</div>
+        <div class="player-artist" id="playerArtist">Load music to begin</div>
+      </div>
+      <canvas id="miniViz" width="72" height="36" class="mini-viz" title="Live visualizer"></canvas>
+      <button id="btnFavPlayer" class="icon-btn fav-btn" title="Favorite">♡</button>
+    </div>
+    <div class="player-center">
+      <div class="player-controls">
+        <button id="btnShuffle" class="ctrl-btn" title="Shuffle">🔀</button>
+        <button id="btnPrev" class="ctrl-btn" title="Previous">⏮</button>
+        <button id="btnPlay" class="ctrl-btn play-btn" title="Play/Pause">▶</button>
+        <button id="btnNext" class="ctrl-btn" title="Next">⏭</button>
+        <button id="btnRepeat" class="ctrl-btn" title="Repeat">🔁</button>
+        <button id="btnSpeed" class="ctrl-btn speed-btn" title="Playback speed">1×</button>
+      </div>
+      <div class="progress-row">
+        <span id="timeCurrent">0:00</span>
+        <input type="range" id="progress" min="0" max="100" value="0" step="0.1">
+        <span id="timeTotal">0:00</span>
+      </div>
+    </div>
+    <div class="player-right">
+      <button id="btnLyrics" class="icon-btn" title="Lyrics">🎤</button>
+      <button id="btnEQ" class="icon-btn" title="Equalizer">🎚️</button>
+      <button id="btnQueue" class="icon-btn" title="Queue">☰</button>
+      <button id="btnSleep" class="icon-btn" title="Sleep timer">⏱</button>
+      <button id="btnNowPlaying" class="icon-btn" title="Now Playing (round visualizer)">⭕</button>
+      <div class="volume-box">
+        <span>🔊</span>
+        <input type="range" id="volume" min="0" max="100" value="80">
+      </div>
+    </div>
+  </footer>
+
+  <!-- NOW PLAYING OVERLAY -->
+  <div id="nowPlaying" class="now-playing hidden">
+    <div class="np-bg" id="npBg"></div>
+    <button id="btnCloseNP" class="icon-btn np-close">✕</button>
+    <div class="np-inner">
+      <div class="np-left">
+        <div class="np-viz-modes">
+          <button data-viz="round" class="active">⭕ Round</button>
+          <button data-viz="bars">📊 Bars</button>
+          <button data-viz="wave">〰 Wave</button>
+        </div>
+        <div class="np-cover-wrap">
+          <canvas id="vizCanvas" width="420" height="420"></canvas>
+          <div class="np-cover" id="npCover"><span>🎵</span></div>
+        </div>
+        <div class="np-title" id="npTitle">—</div>
+        <div class="np-artist" id="npArtist">—</div>
+        <div class="np-album" id="npAlbum">—</div>
+        <div class="np-controls">
+          <button id="npShuffle" class="ctrl-btn">🔀</button>
+          <button id="npPrev" class="ctrl-btn">⏮</button>
+          <button id="npPlay" class="ctrl-btn play-btn big">▶</button>
+          <button id="npNext" class="ctrl-btn">⏭</button>
+          <button id="npRepeat" class="ctrl-btn">🔁</button>
+        </div>
+        <div class="progress-row np-progress"><span id="npCurrent">0:00</span><input type="range" id="npProgress" min="0" max="100" value="0" step="0.1"><span id="npTotal">0:00</span></div>
+        <div class="np-actions">
+          <button id="npFav" class="btn btn-small">♡ Favorite</button>
+          <button id="npEdit" class="btn btn-small">✏️ Edit Tags</button>
+          <button id="npLyricsBtn" class="btn btn-small">🎤 Lyrics</button>
+          <button id="npEQBtn" class="btn btn-small">🎚️ Equalizer</button>
+          <button id="npShare" class="btn btn-small">↗ Share</button>
+          <button id="npDownload" class="btn btn-small">⬇ Download</button>
+        </div>
+      </div>
+      <div class="np-right">
+        <div class="np-tabs">
+          <button class="np-tab active" data-np-tab="lyrics">Lyrics</button>
+          <button class="np-tab" data-np-tab="eq">Equalizer</button>
+          <button class="np-tab" data-np-tab="queue">Queue</button>
+        </div>
+        <div id="npTabLyrics" class="np-panel">
+          <div id="lyricsBox" class="lyrics-box"><p class="hint">No lyrics loaded. Tap “Fetch Lyrics” or paste your own.</p></div>
+          <div class="btn-row">
+            <button id="btnFetchLyrics" class="btn btn-small">🔎 Fetch Lyrics</button>
+            <button id="btnEditLyrics" class="btn btn-small">✏️ Paste / Edit</button>
+          </div>
+          <textarea id="lyricsEdit" class="hidden" rows="8" placeholder="Paste lyrics here (LRC format works too: [00:12.00] line)"></textarea>
+          <button id="btnSaveLyrics" class="btn btn-primary btn-small hidden">💾 Save Lyrics</button>
+        </div>
+        <div id="npTabEQ" class="np-panel hidden">
+          <div class="eq-presets" id="eqPresets">
+            <button data-eq="flat" class="active">Flat</button><button data-eq="bass">Bass Boost</button><button data-eq="treble">Treble</button><button data-eq="vocal">Vocal</button><button data-eq="rock">Rock</button><button data-eq="pop">Pop</button><button data-eq="jazz">Jazz</button><button data-eq="electronic">Electro</button>
+          </div>
+          <label class="switch-row"><span>Equalizer enabled</span><span class="switch"><input type="checkbox" id="eqEnabled" checked><span class="slider"></span></span></label>
+          <div id="eqSliders" class="eq-sliders"></div>
+          <div class="btn-row"><button id="btnResetEQ" class="btn btn-small">Reset</button><span id="eqStatus" class="hint">Custom</span></div>
+        </div>
+        <div id="npTabQueue" class="np-panel hidden">
+          <div class="btn-row" style="margin-bottom:10px">
+            <button id="btnClearQueue" class="btn btn-small">🗑 Clear Queue</button>
+            <span class="hint">Tap a track to jump • ✕ removes it</span>
+          </div>
+          <div id="queueList" class="queue-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALS -->
+  <div id="modalBackdrop" class="modal-backdrop hidden">
+    <!-- Guide -->
+    <div id="modalGuide" class="modal hidden">
+      <div class="modal-head"><h3>🎮 Guide Menu</h3><button class="icon-btn" data-close>✕</button></div>
+      <p class="hint">Quick actions — XENON dashboard shortcuts</p>
+      <div class="menu-list">
+        <button id="guideSurprise">🎲 Surprise Me — random track</button>
+        <button id="guideTheme">🎨 Cycle Theme</button>
+        <button id="guideRadio">📻 Jump to Radio</button>
+        <button id="guideIntro">▶ Replay Intro</button>
+        <button id="guideHelp">❓ Help &amp; Shortcuts</button>
+        <button id="guideSettings">⚙️ Settings</button>
+      </div>
+    </div>
+    <!-- Edit Tags -->
+    <div id="modalEdit" class="modal hidden">
+      <div class="modal-head"><h3>✏️ Edit Tags</h3><button class="icon-btn" data-close>✕</button></div>
+      <p class="hint">Fix metadata &amp; cover — saved on this device and applied instantly.</p>
+      <div class="cover-edit">
+        <div class="cover-preview" id="editCoverPreview"><span>🎵</span></div>
+        <div class="cover-actions">
+          <button id="btnUploadCover" class="btn btn-small">🖼 Upload Cover</button>
+          <button id="btnRemoveCover" class="btn btn-small">✕ Remove Cover</button>
+          <input type="file" id="coverInput" accept="image/*" hidden>
+        </div>
+      </div>
+      <div class="form-grid">
+        <label>Title<input id="editTitle"></label>
+        <label>Artist<input id="editArtist"></label>
+        <label>Album<input id="editAlbum"></label>
+        <label>Track #<input id="editTrack" type="number" min="0"></label>
+        <label>Year<input id="editYear" type="number" min="1900" max="2100"></label>
+        <label>Genre<input id="editGenre"></label>
+      </div>
+      <div class="modal-actions"><button class="btn" data-close>Cancel</button><button id="btnSaveTags" class="btn btn-primary">💾 Save Tags</button></div>
+    </div>
+    <!-- Album detail -->
+    <div id="modalAlbum" class="modal modal-wide hidden">
+      <div class="modal-head"><h3 id="albumModalTitle">Album</h3><button class="icon-btn" data-close>✕</button></div>
+      <div class="album-detail-head">
+        <div class="album-detail-cover" id="albumDetailCover"><span>🎮</span></div>
+        <div>
+          <div class="album-detail-artist" id="albumDetailArtist">—</div>
+          <div class="album-detail-meta" id="albumDetailMeta">—</div>
+          <div class="btn-row" style="margin-top:12px">
+            <button id="btnPlayAlbum" class="btn btn-primary btn-small">▶ Play Album</button>
+            <button id="btnShuffleAlbum" class="btn btn-small">🔀 Shuffle</button>
+            <button id="btnEditAlbum" class="btn btn-small">✏️ Edit Album Tags</button>
+          </div>
+        </div>
+      </div>
+      <div id="albumDetailTracks" class="track-list" style="margin-top:14px"></div>
+    </div>
+    <!-- Playlist -->
+    <div id="modalPlaylist" class="modal hidden">
+      <div class="modal-head"><h3>📋 Playlist</h3><button class="icon-btn" data-close>✕</button></div>
+      <label class="full-label">Name<input id="playlistName" placeholder="My Mix..."></label>
+      <div id="playlistPickList" class="pick-list"></div>
+      <div class="modal-actions"><button class="btn" data-close>Cancel</button><button id="btnSavePlaylist" class="btn btn-primary">💾 Save</button></div>
+    </div>
+    <!-- Playlist picker (add track to…) -->
+    <div id="modalPlaylistPicker" class="modal hidden">
+      <div class="modal-head"><h3>📋 Add to Playlist</h3><button class="icon-btn" data-close>✕</button></div>
+      <div id="playlistPickerList" class="menu-list"></div>
+      <div class="modal-actions"><button class="btn" data-close>Cancel</button><button id="btnPickerNew" class="btn btn-primary">＋ New Playlist</button></div>
+    </div>
+    <!-- Sleep -->
+    <div id="modalSleep" class="modal hidden">
+      <div class="modal-head"><h3>⏱ Sleep Timer</h3><button class="icon-btn" data-close>✕</button></div>
+      <p class="hint">Music fades out &amp; stops after the timer. Current: <b id="sleepModalStatus">Off</b></p>
+      <div class="timer-btns big">
+        <button data-sleep="5">5 min</button><button data-sleep="10">10</button><button data-sleep="15">15</button><button data-sleep="30">30</button><button data-sleep="45">45</button><button data-sleep="60">60</button><button data-sleep="0" class="off">Off</button>
+      </div>
+      <div class="modal-actions"><button class="btn" data-close>Close</button></div>
+    </div>
+    <!-- Track menu -->
+    <div id="modalMenu" class="modal hidden">
+      <div class="modal-head"><h3 id="menuTitle">Track</h3><button class="icon-btn" data-close>✕</button></div>
+      <div class="menu-list">
+        <button id="menuPlay">▶ Play</button>
+        <button id="menuPlayNext">⏭ Play Next</button>
+        <button id="menuAddQueue">➕ Add to Queue</button>
+        <button id="menuFav">❤️ Toggle Favorite</button>
+        <button id="menuAddPlaylist">📋 Add to Playlist…</button>
+        <button id="menuEdit">✏️ Edit Tags</button>
+        <button id="menuLyrics">🎤 Lyrics</button>
+        <button id="menuShare">↗ Share</button>
+        <button id="menuRemove">🗑 Remove from Library</button>
+      </div>
+    </div>
+    <!-- Help -->
+    <div id="modalHelp" class="modal hidden">
+      <div class="modal-head"><h3>❓ Help &amp; Shortcuts</h3><button class="icon-btn" data-close>✕</button></div>
+      <div class="help-body">
+        <h4>⌨️ Shortcuts</h4>
+        <table class="help-table">
+          <tr><td><kbd>Space</kbd></td><td>Play / Pause</td></tr>
+          <tr><td><kbd>→</kbd> / <kbd>←</kbd></td><td>Next / Previous track</td></tr>
+          <tr><td><kbd>M</kbd></td><td>Mute / Unmute</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>Close dialogs / Now Playing</td></tr>
+        </table>
+        <h4>📱 Loading music</h4>
+        <p>Android Chrome: pick a folder for bulk load + auto-scan. iPhone: pick files from the Files app. PC: drag &amp; drop anywhere.</p>
+        <h4>🎮 Dashboard tips</h4>
+        <p>Albums are game cases — tap one for details, or scroll the carousel on Home. The ⋯ menu on any song gives queue, playlist, tag &amp; share options. Radio lives in its own blade. The guide button (X) opens quick actions.</p>
+        <h4>🔒 Privacy</h4>
+        <p>Everything runs locally. Files, favorites &amp; edits never leave your device. Radio streams are fetched directly from the station.</p>
+      </div>
+      <div class="modal-actions"><button class="btn btn-primary" data-close>Got it!</button></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <audio id="audio" preload="metadata"></audio>
+  <audio id="radioAudio" preload="none"></audio>
+  <input type="file" id="importInput" accept="application/json,.json" hidden>
+  <input type="file" id="m3uInput" accept=".m3u,.m3u8,audio/x-mpegurl" hidden>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
